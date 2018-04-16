@@ -1,0 +1,12 @@
+
+*.dSYM
+*.a
+*.o
+*.sym
+*.core
+vgcore.*
+
+/src/Makefile
+wickednotify.1
+wickednotify
+Makefile

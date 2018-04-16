@@ -1,0 +1,5 @@
+#!/bin/sh
+
+( cd src && ./configure $@ )
+
+cp Makefile.in Makefile

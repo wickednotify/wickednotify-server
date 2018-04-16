@@ -1,0 +1,29 @@
+.PHONY: test test-ssl lldb lldb-ssl gdb gdb-ssl valgrind valgrind-ssl destroy check
+
+all:
+	@$(MAKE) --no-print-directory -C src all
+
+test:
+	@$(MAKE) --no-print-directory -C src test
+
+lldb:
+	@$(MAKE) --no-print-directory -C src lldb
+
+gdb:
+	@$(MAKE) --no-print-directory -C src gdb
+
+valgrind:
+	@$(MAKE) --no-print-directory -C src valgrind
+
+install:
+	@$(MAKE) --no-print-directory -C src install
+
+uninstall:
+	@$(MAKE) --no-print-directory -C src uninstall
+
+destroy:
+	@$(MAKE) --no-print-directory -C src destroy
+
+clean:
+	@$(MAKE) --no-print-directory -C src clean
+

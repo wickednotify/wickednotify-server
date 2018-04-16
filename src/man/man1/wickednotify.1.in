@@ -1,0 +1,167 @@
+.TH "WICKEDNOTIFY" "1" "April 2018" "" ""
+.SH "NAME"
+\fBwickednotify\fR \- A Wicked Fast Notification Provider
+.SH FULL PATH
+.P
+This instance of WickedNotify was installed as \fB@prefix@/sbin/wickednotify\fP (Usually \fB/usr/local/sbin/wickednotify\fP)
+.SH SYNOPSIS
+.P
+.RS 2
+.nf
+wickednotify
+       [\-h                             | \-\-help]
+       [\-v                             | \-\-version]
+       [\-c <config\-file>               | \-\-config\-file=<config\-file>]
+       [\-p <port>                      | \-\-\-port=<port>]
+       [\-l <log\-level>                 | \-\-log\-level=<log\-level>]
+       [\-d <device\-table>              | \-\-device\-table=<device\-table>]
+       [\-n <notification\-table>        | \-\-notification\-table=<notification\-table>]
+       [\-a <account\-table>             | \-\-account\-table=<account\-table>]
+       [\-k <account\-table\-pk\-column>   | \-\-account\-table\-pk\-column=<account\-table\-pk\-column>]
+       [\-g <account\-table\-guid\-column> | \-\-account\-table\-guid\-column=<account\-table\-guid\-column>]
+       [\-N <listen\-channel>            | \-\-listen\-channel=<listen\-channel>]
+       [\-U <pg\-user>                   | \-\-pg\-user=<pg\-user>]
+       [\-W <pg\-password>               | \-\-pg\-password=<pg\-password>]
+       [\-H <pg\-host>                   | \-\-pg\-host=<pg\-host>]
+       [\-P <pg\-port>                   | \-\-pg\-port=<pg\-port>]
+       [\-D <pg\-database>               | \-\-pg\-database=<pg\-database>]
+       [\-S <pg\-sslmode>                | \-\-pg\-sslmode=<pg\-sslmode>]
+       [\-M <apns\-mode>                 | \-\-apns\-mode=<apns\-mode>]
+       [\-C <apns\-cert>                 | \-\-apns\-cert=<apns\-cert>]
+.fi
+.RE
+.SH DESCRIPTION
+.P
+The \fBwickednotify\fP server is a notification provider that uses APNS to push to Apple devices, and a websocket server for other devices (including Android)\.
+.P
+All log output is pushed to stderr, if you are pushing that to a file, then you must handle rotating the file yourself or it will get large and slow \fBwickednotify\fP down\.
+.SH OPTIONS
+.P
+\fB\-h\fP or \fB\-\-help\fP
+.br
+       Print usage and exit
+.P
+\fB\-v\fP or \fB\-\-version\fP
+.br
+       Print version information and exit
+.P
+\fB\-c\fP or \fB\-\-config\-file=\fP
+.br
+       \fBString;\fP defaults to @prefix@/etc/wickednotify/wickednotify\.conf
+.br
+       You can use this option to tell WickedNotify where to look for the configuration file\. A sample configuration file is provided in @prefix@/etc/wickednotify\. If there is no file specified WickedNotify will look in the current directory for a config file\. If no config file is found WickedNotify will proceed with default values\.
+.P
+The following options can be specified on the command line or in the configuration file\. In the event a value is specified on the command line and in the config file, WickedNotify will always use the command line option\. Note that if no option is specified then some options will be set to a default value\.
+.P
+\fB[command line short]\fP or \fB[command line long]\fP or \fB[config file]\fP
+.P
+\fB\-p\fP or \fB\-\-port\fP or \fBport\fP
+.br
+       \fBInteger;\fP defaults to \fB8989\fP
+.br
+       Tells WickedNotify what port to listen for WebSocket request on\.  
+.P
+\fB\-l\fP or \fB\-\-log\-level\fP or \fBlog_level\fP
+.br
+       \fBString;\fP defaults to \fBerror\fP
+.br
+       Sets the level of logs to output\.  
+.P
+\fB\-d\fP or \fB\-\-device\-table\fP or \fBdevice_table\fP
+.br
+       \fBString;\fP defaults to \fBwkd\.rdevice\fP
+.br
+\fB\-n\fP or \fB\-\-notification\-table\fP or \fBnotification_table\fP
+.br
+       \fBString;\fP defaults to \fBwkd\.rnotification\fP
+.br
+\fB\-a\fP or \fB\-\-account\-table\fP or \fBaccount_table\fP
+.br
+       \fBString;\fP defaults to \fBwkd\.rprofile\fP
+.br
+\fB\-k\fP or \fB\-\-account\-table\-pk\-column\fP or \fBaccount_table_pk_column\fP
+.br
+       \fBString;\fP defaults to \fBid\fP
+.br
+\fB\-g\fP or \fB\-\-account\-table\-guid\-column\fP or \fBaccount_table_guid_column\fP
+.br
+       \fBString;\fP defaults to \fBguid\fP
+.br
+       These options allow you to change what tables/columns WickedNotify uses, so you can have multiple instances in the same database\.\fBIt is recommended to only change the\fPaccount\-table\fBoptions to us\fPe your account table\.  
+.P
+\fB\-N\fP or \fB\-\-listen\-channel\fP or \fBlisten_channel\fP
+.br
+       \fBString;\fP defaults to \fBwkd_notify\fP
+.br
+       This option allows you to specify what channel WickedNotify LISTENs on\. Must be a valid PostgreSQL identifier\.  
+.P
+\fB\-U\fP or \fB\-\-pg\-user\fP or \fBpg_user\fP
+.br
+       \fBString;\fP defaults to \fBwkd_notify_user\fP
+.br
+\fB\-W\fP or \fB\-\-pg\-password\fP or \fBpg_password\fP
+.br
+       \fBString;\fP defaults to \fBwkd_notify_password\fP
+.br
+\fB\-H\fP or \fB\-\-pg\-host\fP or \fBpg_host\fP
+.br
+       \fBString;\fP defaults to \fBlocalhost\fP
+.br
+\fB\-P\fP or \fB\-\-pg\-port\fP or \fBpg_port\fP
+.br
+       \fBString;\fP defaults to \fB5432\fP
+.br
+\fB\-D\fP or \fB\-\-pg\-database\fP or \fBpg_database\fP
+.br
+       \fBString;\fP defaults to \fBpostgres\fP
+.br
+\fB\-S\fP or \fB\-\-pg\-sslmode\fP or \fBpg_sslmode\fP
+.br
+       \fBString;\fP defaults to \fBrequire\fP
+.br
+       These options allow you to connect to an external PostgreSQL server\.
+.P
+\fB\-M\fP or \fB\-\-apns\-mode\fP or \fBapns_mode\fP
+.br
+       \fBString;\fP defaults to \fBdevelopment\fP
+.br
+       The APNS mode can be development or production\. Note that development APNS ids do not work in the production mode, and vice versa\.  
+.P
+\fB\-C\fP or \fB\-\-apns\-cert\fP or \fBapns_cert\fP
+.br
+       \fBString;\fP no default
+.br
+       Required, this must be in a pkcs12 format see additional documentation for details\.  
+.SH EXAMPLES
+.P
+Run \fBwickednotify\fP (short argument):
+.P
+.RS 2
+.nf
+@prefix@/sbin/wickednotify \-c @prefix@/etc/wickednotify/wickednotify\.conf
+.fi
+.RE
+.P
+Run \fBwickednotify\fP (long argument):
+.P
+.RS 2
+.nf
+@prefix@/sbin/wickednotify \-\-config\-file=@prefix@/etc/wickednotify/wickednotify\.conf
+.fi
+.RE
+.SH TROUBLESHOOTING
+.P
+Can't connect to PostgreSQL:
+       Try accessing your database through psql\. If you can, double check your connection string parameters\. If you can't connect, you may have a firewall problem\.
+Can't connect to APNS:
+       Try to ping the APNS service: api\.push\.apple\.com
+.SH AUTHOR
+.P
+Copyright (c) 2018 Annunziato Tocci
+.P
+Created by Annunziato Tocci
+.P
+Report bugs to https://
+.br
+Send us feedback! 
+

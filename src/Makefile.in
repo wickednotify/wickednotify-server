@@ -1,0 +1,109 @@
+BINARY = wickednotify
+CONFIGS = -c config/wickednotify.conf
+WEBROOTS = -r ./web_root/ -z ./role -y ./app
+INSTALL_DEPS = @prefix@/sbin/ @prefix@/etc/wickednotify/ \
+@prefix@/etc/wickednotify/wickednotify.conf
+SOCK_DIR_PARAMETER = @sock_dir_parameter@
+
+VERSION = \"$(shell cat ../VERSION)\"
+CC = cc
+CFLAGS = -O3 -g \
+	-fno-strict-aliasing
+LDFLAGS = @LDFLAGS@
+CPPFLAGS = @CPPFLAGS@ \
+	-I../db_framework_pq -I../ -I../common -I../dependencies/libev \
+	-DVERSION=$(VERSION) -DPREFIX=\"@prefix@\"
+V=0
+
+db_framework_pq_SOURCES = $(wildcard ../db_framework_pq/*.c)
+
+wickednotify_SOURCES = $(sort $(db_framework_pq_SOURCES) $(wildcard *.c))
+wickednotify_OBJECTS = $(wickednotify_SOURCES:.c=.o)
+
+libev_SOURCES = ../dependencies/libev/ev.c
+libev_OBJECTS = $(libev_SOURCES:.c=.o)
+
+.PHONY: all all-format destroy check
+
+# this needs to be at the top to be the default target
+all: $(BINARY)
+	@echo
+	@echo "Compilation Successful"
+
+#### DEPENDENCIES
+$(libev_OBJECTS): %.o: %.c
+ifeq ($(V), 1)
+	$(CC) $(CFLAGS) $(CPPFLAGS) @libev_CPPFLAGS@ -Wno-unused-value -Wno-comment -Wno-extern-initializer -Wno-bitwise-op-parentheses $< -c -o $@
+else
+	@echo " CC $@"
+	@$(CC) $(CFLAGS) $(CPPFLAGS) @libev_CPPFLAGS@ -Wno-unused-value -Wno-comment -Wno-extern-initializer -Wno-bitwise-op-parentheses $< -c -o $@
+endif
+
+#### BUILDING
+$(BINARY): $(BUILD_DEPS) $(libev_OBJECTS) $(wickednotify_OBJECTS)
+ifeq ($(V), 1)
+	$(CC)  $(libev_OBJECTS) $(wickednotify_OBJECTS) $(LDFLAGS) $(CFLAGS) -o ./$(BINARY)
+else
+	@echo " CCLD $(BINARY)"
+	@$(CC) $(libev_OBJECTS) $(wickednotify_OBJECTS) $(LDFLAGS) $(CFLAGS) -o ./$(BINARY)
+endif
+
+all-format:
+	cd ..; ./cleanup_format.sh; cd $(BINARY)
+	$(MAKE) all
+
+$(wickednotify_OBJECTS): %.o: %.c
+ifeq ($(V), 1)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -Wall -Wextra -Wconversion $< -c -o $@
+else
+	@echo " CC $@"
+	@$(CC) $(CFLAGS) $(CPPFLAGS) -Wall -Wextra -Wconversion $< -c -o $@
+endif
+
+#### CLEAN
+clean:
+	rm -f $(wickednotify_OBJECTS) $(libev_OBJECTS) ../check/*.o $(BINARY)
+	@echo
+	@echo "Clean Successful"
+
+#### INSTALL
+@prefix@/sbin/:
+	mkdir -p @prefix@/sbin/
+
+@prefix@/etc/wickednotify/:
+	mkdir -p @prefix@/etc/wickednotify/
+
+@prefix@/etc/$(BINARY)/$(BINARY).conf: @prefix@/etc/$(BINARY)/ config/$(BINARY).conf
+	test -f @prefix@/etc/$(BINARY)/$(BINARY).conf || install config/$(BINARY).conf @prefix@/etc/$(BINARY)/$(BINARY).conf;
+
+install: $(INSTALL_DEPS)
+	mkdir -p @prefix@/etc/$(BINARY)/ @prefix@/sbin @prefix@/@MANDIR@/man1
+	install config/$(BINARY).conf @prefix@/etc/$(BINARY)/$(BINARY).conf.example
+	install $(BINARY) @prefix@/sbin/
+	install man/man1/wickednotify.1 @prefix@/@MANDIR@/man1/wickednotify.1
+	@echo
+	@echo "Installation Successful"
+
+uninstall:
+	rm @prefix@/sbin/$(BINARY)
+	rm -f @prefix@/etc/$(BINARY)/*.example
+	rm -f @prefix@/@MANDIR@/man1/wickednotify.1
+	@echo
+	@echo "Uninstall Successful"
+
+#### TESTING
+test:
+	./$(BINARY) $(CONFIGS) -l info
+
+gdb:
+	echo "run" > temp_gdb_commands
+	gdb -x temp_gdb_commands --args ./$(BINARY) $(CONFIGS) -l info
+	rm temp_gdb_commands
+
+lldb:
+	echo "run" > temp_lldb_commands
+	lldb -s temp_lldb_commands -- ./$(BINARY) $(CONFIGS) -l info
+	rm temp_lldb_commands
+
+valgrind:
+	valgrind --leak-check=full --track-fds=yes --track-origins=yes --show-reachable=yes --suppressions=../valgrind/mac_suppressions.txt --num-callers=100 ./$(BINARY) $(CONFIGS) -l info
