@@ -359,7 +359,7 @@ error:
 	SFREE(buffer);
 }
 
-void initialize_nghttp2_session(http2_session_data *session_data) {
+bool initialize_nghttp2_session(http2_session_data *session_data) {
 	nghttp2_session_callbacks *callbacks;
 
 	nghttp2_session_callbacks_new(&callbacks);
@@ -369,8 +369,11 @@ void initialize_nghttp2_session(http2_session_data *session_data) {
 	nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, on_stream_close_callback);
 	nghttp2_session_callbacks_set_on_header_callback(callbacks, on_header_callback);
 	nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, on_begin_headers_callback);
-	nghttp2_session_client_new(&session_data->session, callbacks, session_data);
+	SERROR_CHECK(nghttp2_session_client_new(&session_data->session, callbacks, session_data), "nghttp2_session_client_new");
 	nghttp2_session_callbacks_del(callbacks);
+	return true;
+error:
+	return false;
 }
 
 bool send_client_connection_header(http2_session_data *session_data) {
@@ -418,7 +421,7 @@ bool initiate_http2(http2_session_data *session_data) {
 	SERROR_CHECK(alpn == NULL || (alpnlen == 2 && memcmp("h2", alpn, 2) == 0), "h2 is not negotiated");
 
     setsockopt(session_data->int_sock, IPPROTO_TCP, TCP_NODELAY, (char *)&val, sizeof(val));
-    initialize_nghttp2_session(session_data);
+    SERROR_CHECK(initialize_nghttp2_session(session_data), "Could not initialize the HTTP/2 connection");
     SERROR_CHECK(send_client_connection_header(session_data), "Could not send client connection header");
 	
 	SERROR_CHECK(session_send(session_data), "Could not send data");
@@ -437,7 +440,7 @@ bool initiate_connection(EV_P, SSL_CTX *ssl_ctx, http2_session_data *session_dat
 	char ssl_err_buf[256];
 	
 	session_data->ssl = create_ssl(ssl_ctx);
-	SERROR_CHECK(apns_session, "Could not create SSL session");
+	SERROR_CHECK(session_data->ssl, "Could not create SSL session");
 	// #if OPENSSL_VERSION_NUMBER >= 0x10100000L	
 	// param = SSL_get0_param(session_data->ssl);
 	// #endif
