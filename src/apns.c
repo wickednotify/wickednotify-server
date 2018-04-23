@@ -369,7 +369,7 @@ bool initialize_nghttp2_session(http2_session_data *session_data) {
 	nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, on_stream_close_callback);
 	nghttp2_session_callbacks_set_on_header_callback(callbacks, on_header_callback);
 	nghttp2_session_callbacks_set_on_begin_headers_callback(callbacks, on_begin_headers_callback);
-	SERROR_CHECK(nghttp2_session_client_new(&session_data->session, callbacks, session_data), "nghttp2_session_client_new");
+	SERROR_CHECK(nghttp2_session_client_new(&session_data->session, callbacks, session_data) == 0, "nghttp2_session_client_new");
 	nghttp2_session_callbacks_del(callbacks);
 	return true;
 error:
