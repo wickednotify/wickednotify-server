@@ -325,6 +325,10 @@ void read_write_cb(EV_P, ev_io *w, int revents) {
 			ev_io_start(EV_A, w);
 		} else if (int_read_len < 0) {
 			SERROR("SSL error");
+		} else if (int_read_len == 0) {
+			// reconnect
+			APNS_disconnect(global_loop);
+			SERROR_CHECK(APNS_connect(global_loop), "Could not reconnect to APNS");
 		} else {
 			int_ng_read_len = nghttp2_session_mem_recv(session_data->session, buffer, (size_t)int_read_len);
 			SERROR_CHECK(int_ng_read_len >= 0, "nghttp2 could not receive data");
