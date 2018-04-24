@@ -74,6 +74,7 @@ CREATE TABLE wkd.rnotification (
   title text,
   body text,
   rread timestamp without time zone,
+  create_stamp timestamp without time zone DEFAULT current_timestamp,
   CONSTRAINT rnotification_pk PRIMARY KEY (id)
 ) WITH (
   OIDS=FALSE
