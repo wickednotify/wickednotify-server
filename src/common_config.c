@@ -321,7 +321,7 @@ bool parse_options(int argc, char *const *argv) {
 	SERROR_SNCAT(str_global_query_insert_device, &int_global_len, str_query3, strlen(str_query3));
 	SERROR_BREPLACE(str_global_query_insert_device, &int_global_len, "{{device_table}}", str_global_device_table, "g");
 
-	char *str_query4 = "SELECT title, body, recipient_id, apns_device_id, create_stamp "
+	char *str_query4 = "SELECT title, body, recipient_id, apns_device_id, {{notification_table}}.create_stamp "
 		"FROM {{notification_table}} "
 		"LEFT JOIN {{device_table}} ON {{device_table}}.profile_id = {{notification_table}}.recipient_id "
 		"WHERE {{notification_table}}.id = {{NOTIFYID}};";
