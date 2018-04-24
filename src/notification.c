@@ -222,7 +222,8 @@ bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
 		} else {
 			int_extra_len = 0;
 		}
-		SERROR_JSONIFY(str_extra, &int_extra_len);
+		// the extra field is assumed to be json
+		// SERROR_JSONIFY(str_extra, &int_extra_len);
 
 		if (str_profile_id == NULL) {
 			SERROR_SNCAT(str_profile_id, &int_profile_id_len, DArray_get(arr_values, 2), strlen(DArray_get(arr_values, 2)));
@@ -402,7 +403,8 @@ bool notification_unsent_query_cb(EV_P, void *cb_data, DB_result *res) {
 		} else {
 			int_extra_len = 0;
 		}
-		SERROR_JSONIFY(str_extra, &int_extra_len);
+		// the extra field is assumed to be json
+		// SERROR_JSONIFY(str_extra, &int_extra_len);
 		
 		SERROR_SNCAT(str_payload, &int_payload_len, str_payload1, strlen(str_payload1));
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{TITLE}}", str_title, "g");
