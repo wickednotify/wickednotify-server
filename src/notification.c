@@ -165,19 +165,21 @@ bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
 	char *str_profile_id = NULL;
 	char *str_id = cb_data;
 	char *str_timestamp = NULL;
+	char *str_extra = NULL;
 	size_t int_payload_len = 0;
 	size_t int_title_len = 0;
 	size_t int_body_len = 0;
 	size_t int_apns_copy_len = 0;
 	size_t int_profile_id_len = 0;
 	size_t int_timestamp_len = 0;
+	size_t int_extra_len = 0;
 
 	DB_fetch_status status = DB_FETCH_OK;
 
 	SERROR_CHECK(res != NULL, "DB_exec failed");
 	SERROR_CHECK(res->status == DB_RES_TUPLES_OK, "DB_exec failed");
 
-	char *str_payload1 = "{\"aps\":{\"alert\":{\"title\":{{TITLE}},\"body\":{{BODY}}},\"badge\":0,\"sound\":\"default\"}}";
+	char *str_payload1 = "{\"aps\":{\"alert\":{\"title\":{{TITLE}},\"body\":{{BODY}}},\"badge\":0,\"sound\":\"default\"},\"extra\":{{EXTRA}}}";
 
 	while ((status = DB_fetch_row(res)) != DB_FETCH_END) {
 		if (arr_values != NULL) {
@@ -199,22 +201,28 @@ bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
 		SERROR_JSONIFY(str_title, &int_title_len);
 		
 		str_body = DArray_get(arr_values, 1);
-		int_body_len = strlen(DArray_get(arr_values, 1));
 		if (str_body != NULL) {
 			int_body_len = strlen(str_body);
 		} else {
 			int_body_len = 0;
 		}
 		SERROR_JSONIFY(str_body, &int_body_len);
-
+		
 		str_timestamp = DArray_get(arr_values, 4);
-		int_timestamp_len = strlen(DArray_get(arr_values, 4));
 		if (str_timestamp != NULL) {
 			int_timestamp_len = strlen(str_timestamp);
 		} else {
 			int_timestamp_len = 0;
 		}
 		SERROR_JSONIFY(str_timestamp, &int_timestamp_len);
+
+		str_extra = DArray_get(arr_values, 5);
+		if (str_extra != NULL) {
+			int_extra_len = strlen(str_extra);
+		} else {
+			int_extra_len = 0;
+		}
+		SERROR_JSONIFY(str_extra, &int_extra_len);
 
 		if (str_profile_id == NULL) {
 			SERROR_SNCAT(str_profile_id, &int_profile_id_len, DArray_get(arr_values, 2), strlen(DArray_get(arr_values, 2)));
@@ -223,6 +231,7 @@ bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
 		SERROR_SNCAT(str_payload, &int_payload_len, str_payload1, strlen(str_payload1));
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{TITLE}}", str_title, "g");
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{BODY}}", str_body, "g");
+		SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", str_extra, "g");
 		
 		if (DArray_get(arr_values, 3) != NULL) {
 			SERROR_SNCAT(str_apns_copy, &int_apns_copy_len, DArray_get(arr_values, 3), strlen(DArray_get(arr_values, 3)));
@@ -234,12 +243,13 @@ bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
 		SFREE(str_payload);
 	}
 
-	str_payload1 = "{\"title\":{{TITLE}},\"body\":{{BODY}},\"id\":{{ID}},\"timestamp\":{{TIMESTAMP}}}";
+	str_payload1 = "{\"title\":{{TITLE}},\"body\":{{BODY}},\"id\":{{ID}},\"timestamp\":{{TIMESTAMP}},\"extra\":{{EXTRA}}}";
 	SERROR_SNCAT(str_payload, &int_payload_len, str_payload1, strlen(str_payload1));
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{TITLE}}", str_title, "g");
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{BODY}}", str_body, "g");
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{ID}}", str_id, "g");
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{TIMESTAMP}}", str_timestamp, "g");
+	SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", str_extra, "g");
 
 	LIST_FOREACH(_server.list_client, first, next, client_node) {
 		struct sock_ev_client *client = client_node->value;
@@ -334,19 +344,21 @@ bool notification_unsent_query_cb(EV_P, void *cb_data, DB_result *res) {
 	char *str_title = NULL;
 	char *str_body = NULL;
 	char *str_timestamp = NULL;
+	char *str_extra = NULL;
 	Registration_action *action = cb_data;
 	struct sock_ev_client *client = action->client;	
 	size_t int_payload_len = 0;
 	size_t int_title_len = 0;
 	size_t int_body_len = 0;
 	size_t int_timestamp_len = 0;
+	size_t int_extra_len = 0;
 
 	DB_fetch_status status = DB_FETCH_OK;
 
 	SERROR_CHECK(res != NULL, "DB_exec failed");
 	SERROR_CHECK(res->status == DB_RES_TUPLES_OK, "DB_exec failed");
 
-	char *str_payload1 = "OLD {\"title\":{{TITLE}},\"body\":{{BODY}},\"id\":{{ID}},\"timestamp\":{{TIMESTAMP}}}";
+	char *str_payload1 = "OLD {\"title\":{{TITLE}},\"body\":{{BODY}},\"id\":{{ID}},\"timestamp\":{{TIMESTAMP}},\"extra\":{{EXTRA}}}";
 
 	while ((status = DB_fetch_row(res)) != DB_FETCH_END) {
 		if (arr_values != NULL) {
@@ -377,19 +389,27 @@ bool notification_unsent_query_cb(EV_P, void *cb_data, DB_result *res) {
 		SERROR_JSONIFY(str_body, &int_body_len);
 
 		str_timestamp = DArray_get(arr_values, 3);
-		int_timestamp_len = strlen(DArray_get(arr_values, 3));
 		if (str_timestamp != NULL) {
 			int_timestamp_len = strlen(str_timestamp);
 		} else {
 			int_timestamp_len = 0;
 		}
 		SERROR_JSONIFY(str_timestamp, &int_timestamp_len);
+
+		str_extra = DArray_get(arr_values, 4);
+		if (str_extra != NULL) {
+			int_extra_len = strlen(str_extra);
+		} else {
+			int_extra_len = 0;
+		}
+		SERROR_JSONIFY(str_extra, &int_extra_len);
 		
 		SERROR_SNCAT(str_payload, &int_payload_len, str_payload1, strlen(str_payload1));
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{TITLE}}", str_title, "g");
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{BODY}}", str_body, "g");
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{ID}}", DArray_get(arr_values, 2), "g");
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{TIMESTAMP}}", str_timestamp, "g");
+		SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", str_extra, "g");
 		
 		SERROR_CHECK(WS_sendFrame(EV_A, client, true, 0x01, str_payload, int_payload_len), "Failed to send message");
 

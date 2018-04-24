@@ -471,7 +471,11 @@ char *jsonify(char *str_inputstring, size_t *ptr_int_result_len) {
 	size_t int_inputstring_len = *ptr_int_result_len;
 
 	/* return empty array for empty input string */
-	if (int_inputstring_len < 1) {
+	if (str_inputstring == NULL) {
+		SERROR_SNCAT(str_result, ptr_int_result_len,
+			"null", (size_t)4);
+		return str_result;
+	} else if (int_inputstring_len < 1) {
 		SERROR_SNCAT(str_result, ptr_int_result_len,
 			"\"\"", (size_t)2);
 		return str_result;

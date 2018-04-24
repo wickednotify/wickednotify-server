@@ -73,6 +73,7 @@ CREATE TABLE wkd.rnotification (
   recipient_id integer NOT NULL,
   title text,
   body text,
+  extra json,
   rread timestamp without time zone,
   create_stamp timestamp without time zone DEFAULT current_timestamp,
   CONSTRAINT rnotification_pk PRIMARY KEY (id)
