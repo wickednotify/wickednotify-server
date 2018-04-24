@@ -47,6 +47,7 @@ typedef struct {
 
 typedef struct {
 	ev_io io;
+	ev_periodic periodic;
 	int int_sock;
 	SSL *ssl;
 	nghttp2_session *session;

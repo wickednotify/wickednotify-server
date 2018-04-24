@@ -474,6 +474,14 @@ error:
 	return false;
 }
 
+void ping_cb(EV_P, ev_periodic *w, int revents) {
+	(void)EV_A;
+	(void)w;
+	(void)revents;
+	nghttp2_submit_ping(apns_session->session, 0, NULL);
+	SINFO("PING");
+}
+
 bool APNS_connect(EV_P) {
 	char *str_authority = NULL;
 	size_t int_authority_len;
@@ -494,6 +502,9 @@ bool APNS_connect(EV_P) {
 	
 	SFREE(str_authority);
 	SERROR_CHECK(initiate_connection(EV_A, apns_ssl_ctx, apns_session), "Could not connect to APNS");
+
+	ev_periodic_init(&apns_session->periodic, ping_cb, 0, 1200, 0);
+	ev_periodic_start(EV_A, &apns_session->periodic);
 
 	return true;
 error:
