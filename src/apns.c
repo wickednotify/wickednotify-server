@@ -312,7 +312,7 @@ void read_write_cb(EV_P, ev_io *w, int revents) {
 	unsigned long ssl_err;
 	char ssl_err_buf[256];
 
-	if (revents & EV_READ) {
+	//if (revents & EV_READ) {
 		if (nghttp2_session_want_read(session_data->session) != 0) {
 			// read a bunch of stuff, then pass it to nghttp2
 			SERROR_SALLOC(buffer, 4096);
@@ -341,7 +341,7 @@ void read_write_cb(EV_P, ev_io *w, int revents) {
 		}
 
 		SERROR_CHECK(session_send(session_data), "Could not send data");
-	} else if (revents & EV_WRITE) {
+	//} else if (revents & EV_WRITE) {
 		SERROR_CHECK(session_send(session_data), "Could not send data");
 
 		if (nghttp2_session_want_write(session_data->session) == 0 ||
@@ -350,7 +350,7 @@ void read_write_cb(EV_P, ev_io *w, int revents) {
 			ev_io_set(w, w->fd, EV_READ);
 			ev_io_start(EV_A, w);
 		}
-	}
+	//}
 
 	SINFO("revents: %d", revents);
 	SINFO("revents & EV_READ: %d", revents & EV_READ);
