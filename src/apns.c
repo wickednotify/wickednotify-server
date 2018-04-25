@@ -326,9 +326,9 @@ void read_write_cb(EV_P, ev_io *w, int revents) {
 				ev_io_stop(EV_A, w);
 				ev_io_set(w, w->fd, EV_WRITE);
 				ev_io_start(EV_A, w);
-			} else if (int_read_len < 0) {
+			} else if (int_read_len < 0 && errno != EPIPE) {
 				SERROR("SSL error");
-			} else if (int_read_len == 0) {
+			} else if (int_read_len <= 0) {
 				// reconnect
 				APNS_disconnect(global_loop);
 				SERROR_CHECK(APNS_connect(global_loop), "Could not reconnect to APNS");
