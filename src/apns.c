@@ -126,13 +126,15 @@ http2_session_data *create_http2_session_data() {
 	return salloc(sizeof(http2_session_data));
 }
 
-void free_http2_session_data(http2_session_data *data) {
+void free_http2_session_data(EV_P, http2_session_data *data) {
 	if (data != NULL) {
 		setblock(data->int_sock);
 		if (data->ssl) {
 			SSL_shutdown(data->ssl);
 			SSL_free(data->ssl);
 		}
+		ev_io_stop(EV_A, &data->io);
+		ev_periodic_stop(EV_A, &data->periodic);
 		if (data->int_sock) {
 			close(data->int_sock);
 		}
@@ -311,34 +313,39 @@ void read_write_cb(EV_P, ev_io *w, int revents) {
 	char ssl_err_buf[256];
 
 	if (revents & EV_READ) {
-		// read a bunch of stuff, then pass it to nghttp2
-		SERROR_SALLOC(buffer, 4096);
-		int_read_len = SSL_read(session_data->ssl, buffer, 4096);
-
-		if (int_read_len == SSL_ERROR_WANT_READ) {
-			ev_io_stop(EV_A, w);
-			ev_io_set(w, w->fd, EV_READ);
-			ev_io_start(EV_A, w);
-		} else if (int_read_len == SSL_ERROR_WANT_WRITE) {
-			ev_io_stop(EV_A, w);
-			ev_io_set(w, w->fd, EV_WRITE);
-			ev_io_start(EV_A, w);
-		} else if (int_read_len < 0) {
-			SERROR("SSL error");
-		} else if (int_read_len == 0) {
-			// reconnect
-			APNS_disconnect(global_loop);
-			SERROR_CHECK(APNS_connect(global_loop), "Could not reconnect to APNS");
-		} else {
-			int_ng_read_len = nghttp2_session_mem_recv(session_data->session, buffer, (size_t)int_read_len);
-			SERROR_CHECK(int_ng_read_len >= 0, "nghttp2 could not receive data");
+		if (nghttp2_session_want_read(session_data->session) != 0) {
+			// read a bunch of stuff, then pass it to nghttp2
+			SERROR_SALLOC(buffer, 4096);
+			int_read_len = SSL_read(session_data->ssl, buffer, 4096);
+	
+			if (int_read_len == SSL_ERROR_WANT_READ) {
+				ev_io_stop(EV_A, w);
+				ev_io_set(w, w->fd, EV_READ);
+				ev_io_start(EV_A, w);
+			} else if (int_read_len == SSL_ERROR_WANT_WRITE) {
+				ev_io_stop(EV_A, w);
+				ev_io_set(w, w->fd, EV_WRITE);
+				ev_io_start(EV_A, w);
+			} else if (int_read_len < 0) {
+				SERROR("SSL error");
+			} else if (int_read_len == 0) {
+				// reconnect
+				APNS_disconnect(global_loop);
+				SERROR_CHECK(APNS_connect(global_loop), "Could not reconnect to APNS");
+				SFREE(buffer);
+				return;
+			} else {
+				int_ng_read_len = nghttp2_session_mem_recv(session_data->session, buffer, (size_t)int_read_len);
+				SERROR_CHECK(int_ng_read_len >= 0, "nghttp2 could not receive data");
+			}
 		}
 
 		SERROR_CHECK(session_send(session_data), "Could not send data");
 	} else if (revents & EV_WRITE) {
 		SERROR_CHECK(session_send(session_data), "Could not send data");
 
-		if (nghttp2_session_want_write(session_data->session) == 0) {
+		if (nghttp2_session_want_write(session_data->session) == 0 ||
+			nghttp2_session_want_read(session_data->session) != 0) {
 			ev_io_stop(EV_A, w);
 			ev_io_set(w, w->fd, EV_READ);
 			ev_io_start(EV_A, w);
@@ -587,8 +594,7 @@ void APNS_free_notification_response(APNS_notification_response *response) {
 
 bool APNS_disconnect(EV_P) {
 	if (apns_session) {
-		ev_io_stop(EV_A, &apns_session->io);
-		free_http2_session_data(apns_session);
+		free_http2_session_data(EV_A, apns_session);
 		SSL_CTX_free(apns_ssl_ctx);
 
 		if (pkcs12_cert) {

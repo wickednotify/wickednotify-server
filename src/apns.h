@@ -62,7 +62,7 @@ SSL *create_ssl(SSL_CTX *ssl_ctx);
 http2_stream_data *create_http2_stream_data(uint16_t int_port, char *str_authority, size_t int_authority_len);
 void free_http2_stream_data(http2_stream_data *data);
 http2_session_data *create_http2_session_data();
-void free_http2_session_data(http2_session_data *data);
+void free_http2_session_data(EV_P, http2_session_data *data);
 int connect_to_server(char *str_host, uint16_t int_port);
 bool session_send(http2_session_data *session_data);
 ssize_t send_callback(nghttp2_session *session, const uint8_t *data, size_t length, int flags, void *user_data);
