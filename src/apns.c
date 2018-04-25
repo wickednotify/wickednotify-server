@@ -201,8 +201,13 @@ ssize_t send_callback(nghttp2_session *session, const uint8_t *data, size_t leng
 		ev_io_start(global_loop, &session_data->io);
 
 		return NGHTTP2_ERR_WOULDBLOCK;
-	} else if (int_write_len < 0) {
+	} else if (int_write_len < 0 && errno != EPIPE) {
 		SERROR("SSL error");
+	} else if (int_write_len <= 0) {
+		// reconnect
+		APNS_disconnect(global_loop);
+		SERROR_CHECK(APNS_connect(global_loop), "Could not reconnect to APNS");
+		return 0;
 	}
 	
 	return (ssize_t)int_write_len;
