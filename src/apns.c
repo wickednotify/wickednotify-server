@@ -182,6 +182,22 @@ error:
 	return false;
 }
 
+void apns_reconnect_cb(EV_P, ev_check *w, int revents) {
+	(void)revents;
+
+	// reconnect
+	if (apns_session) {
+		APNS_disconnect(EV_A);
+	}
+	SERROR_CHECK(APNS_connect(EV_A), "Could not reconnect to APNS");
+	
+	ev_check_stop(EV_A, w);
+	decrement_idle(EV_A);
+	SFREE(w);
+error:
+	SINFO("Could not reconnect to APNS");
+}
+
 ssize_t send_callback(nghttp2_session *session, const uint8_t *data, size_t length, int flags, void *user_data) {
 	http2_session_data *session_data = (http2_session_data *)user_data;
 	(void)session;
@@ -204,10 +220,13 @@ ssize_t send_callback(nghttp2_session *session, const uint8_t *data, size_t leng
 	} else if (int_write_len < 0 && errno != EPIPE) {
 		SERROR("SSL error");
 	} else if (int_write_len <= 0) {
-		// reconnect
-		APNS_disconnect(global_loop);
-		SERROR_CHECK(APNS_connect(global_loop), "Could not reconnect to APNS");
-		return 0;
+		ev_check *w;
+		SERROR_SALLOC(w, sizeof(ev_check));
+		ev_check_init(w, apns_reconnect_cb);
+		ev_check_start(global_loop, w);
+		increment_idle(global_loop);
+		
+		return NGHTTP2_ERR_CALLBACK_FAILURE;
 	}
 	
 	return (ssize_t)int_write_len;
@@ -600,6 +619,7 @@ void APNS_free_notification_response(APNS_notification_response *response) {
 bool APNS_disconnect(EV_P) {
 	if (apns_session) {
 		free_http2_session_data(EV_A, apns_session);
+		apns_session = NULL;
 		SSL_CTX_free(apns_ssl_ctx);
 
 		if (pkcs12_cert) {
