@@ -224,7 +224,7 @@ bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
 		SERROR_SNCAT(str_payload, &int_payload_len, str_payload1, strlen(str_payload1));
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{TITLE}}", str_title, "g");
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{BODY}}", str_body, "g");
-		SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", (str_extra != NULL ? str_extra : "null"), "g");
+		SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", (str_extra != NULL ? str_extra : "{}"), "g");
 		
 		if (DArray_get(arr_values, 3) != NULL) {
 			SERROR_SNCAT(str_apns_copy, &int_apns_copy_len, DArray_get(arr_values, 3), strlen(DArray_get(arr_values, 3)));
@@ -242,7 +242,7 @@ bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{BODY}}", str_body, "g");
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{ID}}", str_id, "g");
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{TIMESTAMP}}", str_timestamp, "g");
-	SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", (str_extra != NULL ? str_extra : "null"), "g");
+	SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", (str_extra != NULL ? str_extra : "{}"), "g");
 
 	LIST_FOREACH(_server.list_client, first, next, client_node) {
 		struct sock_ev_client *client = client_node->value;
@@ -395,7 +395,7 @@ bool notification_unsent_query_cb(EV_P, void *cb_data, DB_result *res) {
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{BODY}}", str_body, "g");
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{ID}}", DArray_get(arr_values, 2), "g");
 		SERROR_BREPLACE(str_payload, &int_payload_len, "{{TIMESTAMP}}", str_timestamp, "g");
-		SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", (str_extra != NULL ? str_extra : "null"), "g");
+		SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", (str_extra != NULL ? str_extra : "{}"), "g");
 		
 		SERROR_CHECK(WS_sendFrame(EV_A, client, true, 0x01, str_payload, int_payload_len), "Failed to send message");
 
