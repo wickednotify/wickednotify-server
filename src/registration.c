@@ -36,7 +36,7 @@ void registration_cb(EV_P, ev_check *w, int revents) {
 			SERROR_SNCAT(str_query, &int_query_len, str_global_query_get_unsent_notifications, strlen(str_global_query_get_unsent_notifications));
 			SERROR_BREPLACE(str_query, &int_query_len, "{{NOTIFYID}}", str_id_literal, "g");
 			SERROR_BREPLACE(str_query, &int_query_len, "{{PROFILEID}}", action->client->str_profile_id, "g");
-			
+
 			SERROR_CHECK(query_is_safe(str_query), "SQL Injection detected");
 			SERROR_CHECK(DB_exec(EV_A, global_conn, action, str_query, notification_unsent_query_cb), "DB_exec failed");
 		}

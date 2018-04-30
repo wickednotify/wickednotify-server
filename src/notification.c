@@ -148,6 +148,7 @@ void notification_queue_cb(EV_P, ev_check *w, int revents) {
 			SERROR_CHECK(str_id_literal != NULL, "DB_escape_literal failed");
 			
 			SERROR_SNCAT(str_id, &int_notify_len, str_notify + 4, int_notify_len - 4);
+			SINFO("str_id: %s", str_id);
 
 			SERROR_SNCAT(str_query, &int_query_len, str_global_query_get_notification, strlen(str_global_query_get_notification));
 			SERROR_BREPLACE(str_query, &int_query_len, "{{NOTIFYID}}", str_id_literal, "g");
@@ -179,6 +180,7 @@ void notification_queue_cb(EV_P, ev_check *w, int revents) {
 
 		decrement_idle(EV_A);
 		SFREE(str_notify);
+		str_id = NULL;
 	}
 error:
 	bol_error_state = false;
@@ -207,6 +209,8 @@ bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
 	size_t int_apns_copy_len = 0;
 	size_t int_profile_id_len = 0;
 	size_t int_timestamp_len = 0;
+
+	SINFO("str_id: %s", str_id);
 
 	DB_fetch_status status = DB_FETCH_OK;
 
@@ -278,6 +282,7 @@ bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{ID}}", str_id, "g");
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{TIMESTAMP}}", str_timestamp, "g");
 	SERROR_BREPLACE(str_payload, &int_payload_len, "{{EXTRA}}", (str_extra != NULL ? str_extra : "{}"), "g");
+	SINFO("str_payload: %s", str_payload);
 
 	LIST_FOREACH(_server.list_client, first, next, client_node) {
 		struct sock_ev_client *client = client_node->value;
