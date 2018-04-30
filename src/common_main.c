@@ -154,6 +154,15 @@ void program_exit() {
 			que_registration = NULL;
 		}
 
+		if (que_notification != NULL) {
+			while (Queue_peek(que_notification) != NULL) {
+				char *str_notify = Queue_recv(que_notification);
+				SFREE(str_notify);
+			}
+			Queue_destroy(que_notification);
+			que_notification = NULL;
+		}
+
 		SFREE(str_global_port);
 		SFREE(str_global_error);
 		SFREE(str_global_config_file);
@@ -194,6 +203,10 @@ void program_exit() {
 		if (global_registration_watcher) {
 			ev_check_stop(global_loop, global_registration_watcher);
 			SFREE(global_registration_watcher);
+		}
+		if (global_notification_queue_watcher) {
+			ev_check_stop(global_loop, global_notification_queue_watcher);
+			SFREE(global_notification_queue_watcher);
 		}
 		if (global_notify_watcher) {
 			ev_io_stop(global_loop, global_notify_watcher);

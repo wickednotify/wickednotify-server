@@ -8,10 +8,12 @@
 #include "common_util_sql.h"
 #include <ev.h>
 
+extern ev_check *global_notification_queue_watcher;
 extern ev_io *global_notify_watcher;
 extern ev_prepare *global_reconnect_timer;
 extern ev_tstamp global_close_time;
 extern DB_conn *global_conn;
+extern Queue *que_notification;
 
 // Runs the LISTEN query
 bool global_listen_cb(EV_P, void *cb_data, DB_result *res);
@@ -19,12 +21,15 @@ bool global_listen_cb(EV_P, void *cb_data, DB_result *res);
 // This watcher runs PQconsumeInput ti recieve NOTIFYs
 void global_notify_cb(EV_P, ev_io *w, int revents);
 
+// This function adds the NOTIFYs to a queue that is processed by notification_queue_cb
+void send_notices(EV_P);
+
 // This function parses the NOTIFYs
 // NEW: runs a query to get the notification, along with all APNS devices
 //  - callback: notification_query_cb
 // READ: runs a query to get the profile id
 //  - callback: notification_read_query_cb
-void send_notices(EV_P);
+void notification_queue_cb(EV_P, ev_check *w, int revents);
 
 // This function sends the notification to all clients and all APNS devices
 bool notification_query_cb(EV_P, void *cb_data, DB_result *res);

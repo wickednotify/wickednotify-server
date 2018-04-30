@@ -1,9 +1,11 @@
 #include "notification.h"
 
+ev_check *global_notification_queue_watcher = NULL;
 ev_io *global_notify_watcher = NULL;
 ev_prepare *global_reconnect_timer = NULL;
 ev_tstamp global_close_time;
 DB_conn *global_conn = NULL;
+Queue *que_notification = NULL;
 
 // Handle global PG connection
 void global_connect_cb(EV_P, void *cb_data, DB_conn *conn) {
@@ -31,9 +33,15 @@ bool global_listen_cb(EV_P, void *cb_data, DB_result *res) {
 	//   so we need to do the registration steps one at a time
 	que_registration = Queue_create();
 
+	que_notification = Queue_create();
+	
 	SERROR_SALLOC(global_registration_watcher, sizeof(ev_check));
 	ev_check_init(global_registration_watcher, registration_cb);
 	ev_check_start(EV_A, global_registration_watcher);
+
+	SERROR_SALLOC(global_notification_queue_watcher, sizeof(ev_check));
+	ev_check_init(global_notification_queue_watcher, notification_queue_cb);
+	ev_check_start(EV_A, global_notification_queue_watcher);
 
 	SERROR_SALLOC(global_notify_watcher, sizeof(ev_io));
 	ev_io_init(global_notify_watcher, global_notify_cb, global_conn->int_sock, EV_READ);
@@ -97,21 +105,49 @@ void send_notices(EV_P) {
 	PGnotify *pg_notify_current = NULL;
 	pg_notify_current = PQnotifies(global_conn->conn);
 	char *str_temp = NULL;
-	char *str_id_literal = NULL;
-	char *str_id = NULL;
 	size_t int_temp_len;
-	size_t int_query_len;
-	char *str_query = NULL;
 
 	while (pg_notify_current != NULL) {
 		int_temp_len = pg_notify_current->extra != NULL ? strlen(pg_notify_current->extra) : 0;
-		str_temp = bescape_value(pg_notify_current->extra != NULL ? pg_notify_current->extra : "", &int_temp_len);
-		SERROR_CHECK(str_temp != NULL, "bescape_value failed");
-		if (strncmp(str_temp, "NEW ", 4) == 0) {
-			str_id_literal = DB_escape_literal(global_conn, str_temp + 4, int_temp_len - 4);
+		SERROR_SNCAT(str_temp, &int_temp_len, pg_notify_current->extra != NULL ? pg_notify_current->extra : "", int_temp_len);
+		SINFO("str_temp: %s", str_temp);
+		Queue_send(que_notification, str_temp);
+		increment_idle(EV_A);
+		PQfreemem(pg_notify_current);
+
+		pg_notify_current = PQnotifies(global_conn->conn);
+		str_temp = NULL;
+	}
+error:
+	errno = 0;
+	bol_error_state = false;
+	if (pg_notify_current != NULL) {
+		PQfreemem(pg_notify_current);
+		pg_notify_current = NULL;
+	}
+	SFREE(str_temp);
+}
+
+void notification_queue_cb(EV_P, ev_check *w, int revents) {
+	(void)w;
+	(void)revents;
+	char *str_notify = NULL;
+	char *str_id_literal = NULL;
+	char *str_id = NULL;
+	char *str_query = NULL;
+	size_t int_query_len;
+	size_t int_notify_len;
+
+	if (!bol_query_in_process && Queue_peek(que_notification)) {
+		str_notify = Queue_recv(que_notification);
+		int_notify_len = strlen(str_notify);
+		SINFO("str_notify: %s", str_notify);
+		
+		if (strncmp(str_notify, "NEW ", 4) == 0) {
+			str_id_literal = DB_escape_literal(global_conn, str_notify + 4, int_notify_len - 4);
 			SERROR_CHECK(str_id_literal != NULL, "DB_escape_literal failed");
 			
-			SERROR_SNCAT(str_id, &int_temp_len, str_temp + 4, int_temp_len - 4);
+			SERROR_SNCAT(str_id, &int_notify_len, str_notify + 4, int_notify_len - 4);
 
 			SERROR_SNCAT(str_query, &int_query_len, str_global_query_get_notification, strlen(str_global_query_get_notification));
 			SERROR_BREPLACE(str_query, &int_query_len, "{{NOTIFYID}}", str_id_literal, "g");
@@ -121,11 +157,11 @@ void send_notices(EV_P) {
 			SERROR_CHECK(query_is_safe(str_query), "SQL Injection detected");
 			SERROR_CHECK(DB_exec(EV_A, global_conn, str_id, str_query, notification_query_cb), "DB_exec failed");	
 
-		} else if (strncmp(str_temp, "READ ", 5) == 0) {
-			str_id_literal = DB_escape_literal(global_conn, str_temp + 5, int_temp_len - 5);
+		} else if (strncmp(str_notify, "READ ", 5) == 0) {
+			str_id_literal = DB_escape_literal(global_conn, str_notify + 5, int_notify_len - 5);
 			SERROR_CHECK(str_id_literal != NULL, "DB_escape_literal failed");
 			
-			SERROR_SNCAT(str_id, &int_temp_len, str_temp + 5, int_temp_len - 5);
+			SERROR_SNCAT(str_id, &int_notify_len, str_notify + 5, int_notify_len - 5);
 
 			SERROR_SNCAT(str_query, &int_query_len, str_global_query_get_profile_id_from_notification, strlen(str_global_query_get_profile_id_from_notification));
 			SERROR_BREPLACE(str_query, &int_query_len, "{{NOTIFYID}}", str_id_literal, "g");
@@ -138,20 +174,19 @@ void send_notices(EV_P) {
 		} else {
 			SERROR_NORESPONSE("BAD NOTIFY");
 		}
-		PQfreemem(pg_notify_current);
 
-		pg_notify_current = PQnotifies(global_conn->conn);
+		bol_query_in_process = true;
+
+		decrement_idle(EV_A);
+		SFREE(str_notify);
 	}
 error:
-	errno = 0;
 	bol_error_state = false;
-	if (pg_notify_current != NULL) {
-		PQfreemem(pg_notify_current);
-		pg_notify_current = NULL;
-	}
-	SFREE(str_id_literal);
-	SFREE(str_temp);
+	SFREE(str_notify);
 	SFREE(str_query);
+	SFREE(str_id_literal);
+	SFREE(str_id);
+	return;
 }
 
 bool notification_query_cb(EV_P, void *cb_data, DB_result *res) {
